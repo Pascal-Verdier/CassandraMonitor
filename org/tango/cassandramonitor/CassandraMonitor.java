@@ -47,17 +47,16 @@
 package org.tango.cassandramonitor;
 
 /*----- PROTECTED REGION ID(CassandraMonitor.imports) ENABLED START -----*/
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.ext.XLogger;
 import org.slf4j.ext.XLoggerFactory;
-import org.tango.DeviceState;
 import org.tango.server.InvocationContext;
 import org.tango.server.ServerManager;
 import org.tango.server.annotation.AroundInvoke;
 import org.tango.server.annotation.Attribute;
 import org.tango.server.annotation.AttributeProperties;
-import org.tango.server.annotation.ClassProperty;
 import org.tango.server.annotation.Command;
 import org.tango.server.annotation.Delete;
 import org.tango.server.annotation.Device;
@@ -65,29 +64,25 @@ import org.tango.server.annotation.DeviceProperty;
 import org.tango.server.annotation.DynamicManagement;
 import org.tango.server.annotation.Init;
 import org.tango.server.annotation.State;
-import org.tango.server.annotation.StateMachine;
 import org.tango.server.annotation.Status;
 import org.tango.server.annotation.DeviceManagement;
 import org.tango.server.annotation.Pipe;
-import org.tango.server.attribute.ForwardedAttribute;import org.tango.server.pipe.PipeValue;
+import org.tango.server.pipe.PipeValue;
 import org.tango.server.dynamic.DynamicManager;
 import org.tango.server.device.DeviceManager;
-import org.tango.server.dynamic.DynamicManager;
 import org.tango.server.events.EventManager;
-import org.tango.server.events.EventType;
 import org.tango.utils.DevFailedUtils;
 
 //	Import Tango IDL types
 import fr.esrf.Tango.*;
 import fr.esrf.TangoDs.Except;
 import fr.esrf.TangoApi.PipeBlob;
-import fr.esrf.TangoApi.PipeDataElement;
 
 // JMX related imports
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
 import javax.management.AttributeNotFoundException;
 import javax.management.InstanceNotFoundException;
 import javax.management.MBeanException;
@@ -118,18 +113,21 @@ public class CassandraMonitor {
 	//	Programmer's data members
 	//========================================================
     /*----- PROTECTED REGION ID(CassandraMonitor.variables) ENABLED START -----*/
-    
+
     //	Put static variables here
-    
+    private static final boolean simulate = true;
+
     /*----- PROTECTED REGION END -----*/	//	CassandraMonitor.variables
 	/*----- PROTECTED REGION ID(CassandraMonitor.private) ENABLED START -----*/
-	
-	//	Put private variables here
-	private JMXConnector connector;
-	private MBeanServerConnection connection;
-	private Boolean connectionError;
-	private ObjectName storageServiceObjName;
-	private ObjectName storageMetricsLoadObjName;
+
+    //	Put private variables here
+    private JMXConnector connector;
+    private MBeanServerConnection connection;
+    private Boolean connectionError;
+    private ObjectName storageServiceObjName;
+    private ObjectName storageMetricsLoadObjName;
+    private ObjectName compactionObjName;
+	private JmxToCompactions jmxToCompactions;
 	/*----- PROTECTED REGION END -----*/	//	CassandraMonitor.private
 
 	//========================================================
@@ -149,8 +147,8 @@ public class CassandraMonitor {
 	public void setJMXPort(short jMXPort) {
 		this.jMXPort = jMXPort;
 		/*----- PROTECTED REGION ID(CassandraMonitor.setJMXPort) ENABLED START -----*/
-		
-		//	Check property value here
+
+        //	Check property value here
 		
 		/*----- PROTECTED REGION END -----*/	//	CassandraMonitor.setJMXPort
 	}
@@ -168,8 +166,8 @@ public class CassandraMonitor {
 	public void setNode(String node) {
 		this.node = node;
 		/*----- PROTECTED REGION ID(CassandraMonitor.setNode) ENABLED START -----*/
-		
-		//	Check property value here
+
+        //	Check property value here
 		
 		/*----- PROTECTED REGION END -----*/	//	CassandraMonitor.setNode
 	}
@@ -187,8 +185,8 @@ public class CassandraMonitor {
 	public void setJMXUser(String jMXUser) {
 		this.jMXUser = jMXUser;
 		/*----- PROTECTED REGION ID(CassandraMonitor.setJMXUser) ENABLED START -----*/
-		
-		//	Check property value here
+
+        //	Check property value here
 		
 		/*----- PROTECTED REGION END -----*/	//	CassandraMonitor.setJMXUser
 	}
@@ -206,8 +204,8 @@ public class CassandraMonitor {
 	public void setJMXPassword(String jMXPassword) {
 		this.jMXPassword = jMXPassword;
 		/*----- PROTECTED REGION ID(CassandraMonitor.setJMXPassword) ENABLED START -----*/
-		
-		//	Check property value here
+
+        //	Check property value here
 		
 		/*----- PROTECTED REGION END -----*/	//	CassandraMonitor.setJMXPassword
 	}
@@ -227,33 +225,36 @@ public class CassandraMonitor {
 		xlogger.entry();
 		logger.debug("init device " + deviceManager.getName());
 		/*----- PROTECTED REGION ID(CassandraMonitor.initDevice) ENABLED START -----*/
-		
-		//	Put your device initialization code here
-		try
-		{
-			storageServiceObjName = new ObjectName("org.apache.cassandra.db:type=StorageService");
-		}
-		catch (MalformedObjectNameException ex) {
-			xlogger.error(ex.getMessage());
-			throw DevFailedUtils.newDevFailed("MalformedObjectNameException","MalformedObjectNameException for object \"org.apache.cassandra.db:type=StorageService\"");
-		}
-		try
-		{
-			storageMetricsLoadObjName = new ObjectName("org.apache.cassandra.metrics:type=Storage,name=Load");
-		}
-		catch (MalformedObjectNameException ex) {
-			xlogger.error(ex.getMessage());
-			throw DevFailedUtils.newDevFailed("MalformedObjectNameException","MalformedObjectNameException for object \"org.apache.cassandra.metrics:type=Storage,name=Load\"");
-		}
-		
-		try
-		{
-			JMXConnect();
-		}
-		catch(DevFailed ex)
-		{
-			xlogger.error(ex.getMessage());
-		}
+
+        //	Put your device initialization code here
+        try {
+            storageServiceObjName = new ObjectName("org.apache.cassandra.db:type=StorageService");
+        } catch (MalformedObjectNameException ex) {
+            xlogger.error(ex.getMessage());
+            throw DevFailedUtils.newDevFailed("MalformedObjectNameException",
+                    "MalformedObjectNameException for object \"org.apache.cassandra.db:type=StorageService\"");
+        }
+        try {
+            storageMetricsLoadObjName = new ObjectName("org.apache.cassandra.metrics:type=Storage,name=Load");
+        } catch (MalformedObjectNameException ex) {
+            xlogger.error(ex.getMessage());
+            throw DevFailedUtils.newDevFailed("MalformedObjectNameException",
+                    "MalformedObjectNameException for object \"org.apache.cassandra.metrics:type=Storage,name=Load\"");
+        }
+        try {
+            compactionObjName = new ObjectName("org.apache.cassandra.db:type=CompactionManager");
+        } catch (MalformedObjectNameException ex) {
+            xlogger.error(ex.getMessage());
+            throw DevFailedUtils.newDevFailed("MalformedObjectNameException",
+                    "MalformedObjectNameException for object \"org.apache.cassandra.db:type=CompactionManager\"");
+        }
+
+        try {
+            JMXConnect();
+        } catch (DevFailed ex) {
+            xlogger.error(ex.getMessage());
+        }
+        new CompactionsThread().start();
 		/*----- PROTECTED REGION END -----*/	//	CassandraMonitor.initDevice
 		xlogger.exit();
 	}
@@ -267,16 +268,15 @@ public class CassandraMonitor {
 	public void deleteDevice() throws DevFailed {
 		xlogger.entry();
 		/*----- PROTECTED REGION ID(CassandraMonitor.deleteDevice) ENABLED START -----*/
-		
-		//	Put your device clearing code here
-		if(!connectionError)
-		{
-			try {
-				connector.close();
-			} catch (IOException ex) {
-				xlogger.error(ex.getMessage());
-			}
-		}
+
+        //	Put your device clearing code here
+        if (!connectionError) {
+            try {
+                connector.close();
+            } catch (IOException ex) {
+                xlogger.error(ex.getMessage());
+            }
+        }
 		
 		/*----- PROTECTED REGION END -----*/	//	CassandraMonitor.deleteDevice
 		xlogger.exit();
@@ -291,8 +291,8 @@ public class CassandraMonitor {
 	public void aroundInvoke(final InvocationContext ctx) throws DevFailed {
 		xlogger.entry();
 			/*----- PROTECTED REGION ID(CassandraMonitor.aroundInvoke) ENABLED START -----*/
-			
-			//	Put aroundInvoke code here
+
+        //	Put aroundInvoke code here
 			
 			/*----- PROTECTED REGION END -----*/	//	CassandraMonitor.aroundInvoke
 		xlogger.exit();
@@ -311,8 +311,8 @@ public class CassandraMonitor {
 	public void setDynamicManager(final DynamicManager dynamicManager) throws DevFailed {
 		this.dynamicManager = dynamicManager;
 		/*----- PROTECTED REGION ID(CassandraMonitor.setDynamicManager) ENABLED START -----*/
-		
-		//	Put your code here
+
+        //	Put your code here
 		
 		/*----- PROTECTED REGION END -----*/	//	CassandraMonitor.setDynamicManager
 	}
@@ -350,9 +350,9 @@ public class CassandraMonitor {
 		org.tango.server.attribute.AttributeValue
 			attributeValue = new org.tango.server.attribute.AttributeValue();
 		/*----- PROTECTED REGION ID(CassandraMonitor.getDataLoadStr) ENABLED START -----*/
-		
-		//	Put read attribute code here
-		dataLoadStr = getJMXAttribute(storageServiceObjName, "LoadString").toString();
+
+        //	Put read attribute code here
+        dataLoadStr = getJMXAttribute(storageServiceObjName, "LoadString").toString();
 		/*----- PROTECTED REGION END -----*/	//	CassandraMonitor.getDataLoadStr
 		attributeValue.setValue(dataLoadStr);
 		xlogger.exit();
@@ -379,35 +379,34 @@ public class CassandraMonitor {
 		org.tango.server.attribute.AttributeValue
 			attributeValue = new org.tango.server.attribute.AttributeValue();
 		/*----- PROTECTED REGION ID(CassandraMonitor.getOperationMode) ENABLED START -----*/
-		
-		//	Put read attribute code here
-		operationMode = getJMXAttribute(storageServiceObjName, "OperationMode").toString();
-		switch(operationMode)
-		{
-			case "STARTING": 
-				setState(DevState.INIT);
-				break;
-			case "NORMAL":
-				setState(DevState.ON);
-				break;
-			case "JOINING":
-				setState(DevState.STANDBY);
-				break;
-			case "LEAVING":
-			case "MOVING":
-			case "DRAINING":
-				setState(DevState.MOVING);
-				break;
-			case "DRAINED":
-				setState(DevState.OFF);
-				break;
-			case "DECOMMISSIONED":
-				setState(DevState.DISABLE);
-				break;
-			default:
-				setState(DevState.UNKNOWN);
-		}
-		setStatus(operationMode);
+
+        //	Put read attribute code here
+        operationMode = getJMXAttribute(storageServiceObjName, "OperationMode").toString();
+        switch (operationMode) {
+            case "STARTING":
+                setState(DevState.INIT);
+                break;
+            case "NORMAL":
+                setState(DevState.ON);
+                break;
+            case "JOINING":
+                setState(DevState.STANDBY);
+                break;
+            case "LEAVING":
+            case "MOVING":
+            case "DRAINING":
+                setState(DevState.MOVING);
+                break;
+            case "DRAINED":
+                setState(DevState.OFF);
+                break;
+            case "DECOMMISSIONED":
+                setState(DevState.DISABLE);
+                break;
+            default:
+                setState(DevState.UNKNOWN);
+        }
+        setStatus(operationMode);
 		/*----- PROTECTED REGION END -----*/	//	CassandraMonitor.getOperationMode
 		attributeValue.setValue(operationMode);
 		xlogger.exit();
@@ -435,9 +434,9 @@ public class CassandraMonitor {
 		org.tango.server.attribute.AttributeValue
 			attributeValue = new org.tango.server.attribute.AttributeValue();
 		/*----- PROTECTED REGION ID(CassandraMonitor.getDataLoad) ENABLED START -----*/
-		
-		//	Put read attribute code here
-		dataLoad = (Long) getJMXAttribute(storageMetricsLoadObjName, "Count");
+
+        //	Put read attribute code here
+        dataLoad = (Long) getJMXAttribute(storageMetricsLoadObjName, "Count");
 		/*----- PROTECTED REGION END -----*/	//	CassandraMonitor.getDataLoad
 		attributeValue.setValue(dataLoad);
 		xlogger.exit();
@@ -463,9 +462,9 @@ public class CassandraMonitor {
 		org.tango.server.attribute.AttributeValue
 			attributeValue = new org.tango.server.attribute.AttributeValue();
 		/*----- PROTECTED REGION ID(CassandraMonitor.getCassandraVersion) ENABLED START -----*/
-		
-		//	Put read attribute code here
-		cassandraVersion = getJMXAttribute(storageServiceObjName, "ReleaseVersion").toString();
+
+        //	Put read attribute code here
+        cassandraVersion = getJMXAttribute(storageServiceObjName, "ReleaseVersion").toString();
 		/*----- PROTECTED REGION END -----*/	//	CassandraMonitor.getCassandraVersion
 		attributeValue.setValue(cassandraVersion);
 		xlogger.exit();
@@ -491,9 +490,9 @@ public class CassandraMonitor {
 		org.tango.server.attribute.AttributeValue
 			attributeValue = new org.tango.server.attribute.AttributeValue();
 		/*----- PROTECTED REGION ID(CassandraMonitor.getClusterName) ENABLED START -----*/
-		
-		//	Put read attribute code here
-		clusterName = getJMXAttribute(storageServiceObjName, "ClusterName").toString();
+
+        //	Put read attribute code here
+        clusterName = getJMXAttribute(storageServiceObjName, "ClusterName").toString();
 		/*----- PROTECTED REGION END -----*/	//	CassandraMonitor.getClusterName
 		attributeValue.setValue(clusterName);
 		xlogger.exit();
@@ -520,24 +519,20 @@ public class CassandraMonitor {
 		org.tango.server.attribute.AttributeValue
 			attributeValue = new org.tango.server.attribute.AttributeValue();
 		/*----- PROTECTED REGION ID(CassandraMonitor.getUnreachableNodes) ENABLED START -----*/
-		
-		//	Put read attribute code here
-		java.util.List list = (java.util.List) getJMXAttribute(storageServiceObjName, "UnreachableNodes");
-		unreachableNodes = new String[list.size()];
-		int i = 0;
-		for (Object n: list)
-		{
-			try
-			{
-				InetAddress addr = InetAddress.getByName(n.toString());
-				unreachableNodes[i] = addr.getHostName();
-			}
-			catch(UnknownHostException ex)
-			{
-				unreachableNodes[i] = n.toString();
-			}
-			i++;
-		}
+
+        //	Put read attribute code here
+        java.util.List list = (java.util.List) getJMXAttribute(storageServiceObjName, "UnreachableNodes");
+        unreachableNodes = new String[list.size()];
+        int i = 0;
+        for (Object n : list) {
+            try {
+                InetAddress addr = InetAddress.getByName(n.toString());
+                unreachableNodes[i] = addr.getHostName();
+            } catch (UnknownHostException ex) {
+                unreachableNodes[i] = n.toString();
+            }
+            i++;
+        }
 		/*----- PROTECTED REGION END -----*/	//	CassandraMonitor.getUnreachableNodes
 		attributeValue.setValue(unreachableNodes);
 		xlogger.exit();
@@ -564,24 +559,20 @@ public class CassandraMonitor {
 		org.tango.server.attribute.AttributeValue
 			attributeValue = new org.tango.server.attribute.AttributeValue();
 		/*----- PROTECTED REGION ID(CassandraMonitor.getLiveNodes) ENABLED START -----*/
-		
-		//	Put read attribute code here
-		java.util.List list = (java.util.List) getJMXAttribute(storageServiceObjName, "LiveNodes");
-		liveNodes = new String[list.size()];
-		int i = 0;
-		for (Object n: list)
-		{
-			try
-			{
-				InetAddress addr = InetAddress.getByName(n.toString());
-				liveNodes[i] = addr.getHostName();
-			}
-			catch(UnknownHostException ex)
-			{
-				liveNodes[i] = n.toString();
-			}
-			i++;
-		}
+
+        //	Put read attribute code here
+        java.util.List list = (java.util.List) getJMXAttribute(storageServiceObjName, "LiveNodes");
+        liveNodes = new String[list.size()];
+        int i = 0;
+        for (Object n : list) {
+            try {
+                InetAddress addr = InetAddress.getByName(n.toString());
+                liveNodes[i] = addr.getHostName();
+            } catch (UnknownHostException ex) {
+                liveNodes[i] = n.toString();
+            }
+            i++;
+        }
 		/*----- PROTECTED REGION END -----*/	//	CassandraMonitor.getLiveNodes
 		attributeValue.setValue(liveNodes);
 		xlogger.exit();
@@ -589,6 +580,32 @@ public class CassandraMonitor {
 	}
 	
 
+	//========================================================
+	//	Pipe data members and related methods
+	//========================================================
+	/**
+	 * Pipe Compactions
+	 * description:
+	 *     Give the jmxToCompactions status
+	 */
+	@Pipe(displayLevel=DispLevel._OPERATOR, label="Compactions")
+	private PipeValue compactions;
+	/**
+	 * Read Pipe Compactions
+	 * 
+	 * @return attribute value
+	 * @throws DevFailed if read pipe failed.
+	 */
+	public PipeValue getCompactions() throws DevFailed {
+		xlogger.entry();
+		/*----- PROTECTED REGION ID(CassandraMonitor.getCompactions) ENABLED START -----*/
+        /*
+         *  Done by thread
+         */
+		/*----- PROTECTED REGION END -----*/	//	CassandraMonitor.getCompactions
+		xlogger.exit();
+		return compactions;
+	}
 
 	//========================================================
 	//	Command data members and related methods
@@ -606,8 +623,8 @@ public class CassandraMonitor {
 	 */
 	public final DevState getState() throws DevFailed {
 		/*----- PROTECTED REGION ID(CassandraMonitor.getState) ENABLED START -----*/
-		
-		//	Put state code here
+
+        //	Put state code here
 		
 		/*----- PROTECTED REGION END -----*/	//	CassandraMonitor.getState
 		return state;
@@ -633,8 +650,8 @@ public class CassandraMonitor {
 	 */
 	public final String getStatus() throws DevFailed {
 		/*----- PROTECTED REGION ID(CassandraMonitor.getStatus) ENABLED START -----*/
-		
-		//	Put status code here
+
+        //	Put status code here
 		
 		/*----- PROTECTED REGION END -----*/	//	CassandraMonitor.getStatus
 		return status;
@@ -647,62 +664,120 @@ public class CassandraMonitor {
 		this.status = status;
 	}
 	
+	/**
+	 * Execute command "ResetSimulation".
+	 * description: Restart simulation if used
+	 * @throws DevFailed if command execution failed.
+	 */
+	@Command(name="ResetSimulation", inTypeDesc="", outTypeDesc="")
+	public void ResetSimulation() throws DevFailed {
+		xlogger.entry();
+		/*----- PROTECTED REGION ID(CassandraMonitor.resetSimulation) ENABLED START -----*/
+
+        jmxToCompactions.reset();
+
+		/*----- PROTECTED REGION END -----*/	//	CassandraMonitor.resetSimulation
+		xlogger.exit();
+	}
+	
 
 	//========================================================
 	//	Programmer's methods
 	//========================================================
 	/*----- PROTECTED REGION ID(CassandraMonitor.methods) ENABLED START -----*/
-	
-	//	Put your own methods here
-	private void JMXConnect() throws DevFailed
-	{
-		String JMXURL = "service:jmx:rmi:///jndi/rmi://" + this.node + ":"+ this.jMXPort + "/jmxrmi";
-		Map<String,String[]> hm = new HashMap<>();
+
+    //	Put your own methods here
+    private void JMXConnect() throws DevFailed {
+        String JMXURL = "service:jmx:rmi:///jndi/rmi://" + this.node + ":" + this.jMXPort + "/jmxrmi";
+        Map<String, String[]> hm = new HashMap<>();
         hm.put(JMXConnector.CREDENTIALS, new String[]{this.jMXUser, this.jMXPassword});
-		
-		try
-		{
-			connector = JMXConnectorFactory.connect(new JMXServiceURL(JMXURL), hm);
-        	connection = connector.getMBeanServerConnection();
-			connectionError = false;
+
+        try {
+            connector = JMXConnectorFactory.connect(new JMXServiceURL(JMXURL), hm);
+            connection = connector.getMBeanServerConnection();
+            connectionError = false;
+        } catch (IOException e) {
+            logger.error(e.getMessage());
+            setState(DevState.UNKNOWN);
+            setStatus("UNKNOWN: " + e.getMessage());
+            connectionError = true;
+            throw DevFailedUtils.newDevFailed("ConnectionError",
+                    "Could not connect to JMX service on " + this.node + ":" + this.jMXPort);
+        }
+    }
+
+    private Object getJMXAttribute(ObjectName on, String jmx_attr_name) throws DevFailed {
+        if (connectionError) {
+            JMXConnect();
+        }
+        try {
+            return connection.getAttribute(on, jmx_attr_name);
+        } catch (AttributeNotFoundException ex) {
+            throw DevFailedUtils.newDevFailed("AttributeNotFoundException", ex.getMessage());
+        } catch (InstanceNotFoundException ex) {
+            connectionError = true;
+            throw DevFailedUtils.newDevFailed("InstanceNotFoundException", ex.getMessage());
+        } catch (ReflectionException ex) {
+            throw DevFailedUtils.newDevFailed("ReflectionException", ex.getMessage());
+        } catch (MBeanException ex) {
+            connectionError = true;
+            throw DevFailedUtils.newDevFailed("MBeanException", ex.getMessage());
+        } catch (IOException ex) {
+            connectionError = true;
+            throw DevFailedUtils.newDevFailed("IOException", ex.getMessage());
+        }
+    }
+
+    private class CompactionsThread extends Thread {
+
+		private CompactionsThread() {
+			jmxToCompactions = new JmxToCompactions();
 		}
-		catch (IOException e) {
-		logger.error(e.getMessage());
-			setState(DevState.UNKNOWN);
-			setStatus("UNKNOWN: " + e.getMessage());
-			connectionError = true;
-			throw DevFailedUtils.newDevFailed("ConnectionError","Could not connect to JMX service on " + this.node + ":" + this.jMXPort);
-		}
-	}
-	
-	private Object getJMXAttribute(ObjectName on, String jmx_attr_name) throws DevFailed
-	{
-		if(connectionError)
-		{
-			JMXConnect();
-		}
-		try
-		{
-			return connection.getAttribute(on, jmx_attr_name);
-		}
-		catch (AttributeNotFoundException ex) {
-			throw DevFailedUtils.newDevFailed("AttributeNotFoundException",ex.getMessage());
-		} catch (InstanceNotFoundException ex) {
-			connectionError = true;
-			throw DevFailedUtils.newDevFailed("InstanceNotFoundException",ex.getMessage());
-		} catch (ReflectionException ex) {
-			throw DevFailedUtils.newDevFailed("ReflectionException",ex.getMessage());
-		} 
-		catch (MBeanException ex) {
-			connectionError = true;
-			throw DevFailedUtils.newDevFailed("MBeanException",ex.getMessage());
-		} 
-		catch(IOException ex) {
-			connectionError = true;
-			throw DevFailedUtils.newDevFailed("IOException",ex.getMessage());
-		}
-	}
-	
+        public void run() {
+			//noinspection InfiniteLoopStatement
+			while (true) {
+                try {
+                    if(simulate) {
+                        jmxToCompactions.setList();
+                    }
+                    else {
+                        //  Build compaction object list
+						Object jmxAtt = getJMXAttribute(compactionObjName, "Compactions");
+						//noinspection unchecked
+						jmxToCompactions.setList((List<HashMap<String, String>>) jmxAtt);
+                    }
+                    if (jmxToCompactions.hasChanged()) {
+                        PipeBlob pipeBlob = jmxToCompactions.getPipeBlob();
+                        //  And sent it to pipe and event
+                        compactions = new PipeValue(pipeBlob);
+                        EventManager.getInstance().pushPipeEvent(deviceManager.getName(), "Compactions", compactions);
+
+                        //System.out.println("Compactions  change");
+                    } else {
+                        //  Check if first call
+                        if (compactions ==null)
+                            compactions = new PipeValue(jmxToCompactions.getPipeBlob());
+                        //System.out.println("No change");
+                    }
+                } catch (DevFailed e) {
+                    //  Build pipe with error description and send event
+                    compactions = new PipeValue(new PipeBlob(e.errors[0].desc));
+                    try {
+                        EventManager.getInstance().pushPipeEvent(
+                        		deviceManager.getName(), "Compactions", compactions);
+                    } catch (DevFailed devFailed) {
+                        Except.print_exception(devFailed);
+                    }
+                }
+                try {
+                    sleep(1000);
+                } catch (InterruptedException e) {
+                    System.err.println(e.toString());
+                }
+            }
+        }
+    }
+
 	/*----- PROTECTED REGION END -----*/	//	CassandraMonitor.methods
 
 

@@ -40,6 +40,15 @@
       </argout>
       <status abstract="true" inherited="true" concrete="true" concreteHere="false"/>
     </commands>
+    <commands name="ResetSimulation" description="Restart simulation if used" execMethod="reset_simulation" displayLevel="OPERATOR" polledPeriod="0" isDynamic="false">
+      <argin description="">
+        <type xsi:type="pogoDsl:VoidType"/>
+      </argin>
+      <argout description="">
+        <type xsi:type="pogoDsl:VoidType"/>
+      </argout>
+      <status abstract="false" inherited="false" concrete="true" concreteHere="true"/>
+    </commands>
     <attributes name="DataLoadStr" attType="Scalar" rwType="READ" displayLevel="OPERATOR" polledPeriod="60000" maxX="" maxY="" allocReadMember="true" isDynamic="false">
       <dataType xsi:type="pogoDsl:StringType"/>
       <changeEvent fire="false" libCheckCriteria="false"/>
@@ -99,6 +108,7 @@
       <status abstract="false" inherited="false" concrete="true" concreteHere="true"/>
       <properties description="List of Cassandra nodes from the cluster which are currently alive" label="Live nodes" unit="" standardUnit="" displayUnit="" format="" maxValue="" minValue="" maxAlarm="" minAlarm="" maxWarning="" minWarning="" deltaTime="" deltaValue=""/>
     </attributes>
+    <pipes name="Compactions" description="Give the compactions status" label="Compactions" rwType="READ" displayLevel="OPERATOR"/>
     <preferences docHome="./doc_html" makefileHome="/segfs/tango/cppserver/env"/>
   </classes>
 </pogoDsl:PogoSystem>
