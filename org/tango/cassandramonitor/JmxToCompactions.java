@@ -76,8 +76,8 @@ public class JmxToCompactions {
     private static final int total = 1000000;
     private static final int total2 = 400000;
     private static final int defaultValue = 100000;
-    private int completed = defaultValue;
-    private int completed2 = defaultValue ;
+    private int completed = total;
+    private int completed2 = total2;
     public void setList() {
         compactionList = new ArrayList<>();
         if (completed<=total) {
@@ -100,7 +100,7 @@ public class JmxToCompactions {
     }
     //===============================================================
     //===============================================================
-    void reset() {
+    void startSimulation() {
         completed = defaultValue;
         completed2 = defaultValue;
     }

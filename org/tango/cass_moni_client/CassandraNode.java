@@ -81,7 +81,7 @@ public class CassandraNode extends DeviceProxy {
         name = deviceName.substring(deviceName.lastIndexOf('/')+1);
         buildStateViewer(deviceName);
         compactionChart = new CompactionChart(this);
-        compactionButton = new JRadioButton("Compaction");
+        compactionButton = new JRadioButton("Compacting");
         compactionButton.setFont(font);
         compactionButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(ActionEvent evt) {
@@ -171,8 +171,23 @@ public class CassandraNode extends DeviceProxy {
     }
     //===============================================================
     //===============================================================
-    public void resetSimulation() throws DevFailed {
-        command_inout("ResetSimulation");
+    public void startSimulation() throws DevFailed {
+        command_inout("StartSimulation");
+    }
+    //===============================================================
+    //===============================================================
+    public String getStatus() {
+        try {
+            return status();
+        }
+        catch (DevFailed e) {
+            return e.errors[0].desc;
+        }
+    }
+    //===============================================================
+    //===============================================================
+    public String getHtmlStatus() {
+        return "<tr>\n<td><b>" + name + "</b></td><td>" + getStatus() + "</td>\n</tr>\n";
     }
     //===============================================================
     //===============================================================

@@ -101,6 +101,8 @@ public class CassandraMonitoring extends JFrame {
 
         String serverName = className+'/'+instanceName;
         String[] deviceNames = new DbServer(serverName).get_device_name(className);
+        if (deviceNames.length==0)
+            Except.throw_exception("NoDeviceFound", "No device found for server " + serverName);
         for (String deviceName : deviceNames) {
             System.out.println(deviceName);
             cassandraNodes.add(new CassandraNode(deviceName));
@@ -124,9 +126,10 @@ public class CassandraMonitoring extends JFrame {
         javax.swing.JLabel jLabel1 = new javax.swing.JLabel();
         javax.swing.JMenuBar menuBar = new javax.swing.JMenuBar();
         javax.swing.JMenu fileMenu = new javax.swing.JMenu();
-        javax.swing.JMenuItem resetItem = new javax.swing.JMenuItem();
+        javax.swing.JMenuItem startSimulationItem = new javax.swing.JMenuItem();
         javax.swing.JMenuItem exitItem = new javax.swing.JMenuItem();
         javax.swing.JMenu viewMenu = new javax.swing.JMenu();
+        javax.swing.JMenuItem viewStatusItem = new javax.swing.JMenuItem();
         javax.swing.JMenuItem compactionsItem = new javax.swing.JMenuItem();
         javax.swing.JMenu helpMenu = new javax.swing.JMenu();
         javax.swing.JMenuItem jMenuItem1 = new javax.swing.JMenuItem();
@@ -149,15 +152,15 @@ public class CassandraMonitoring extends JFrame {
         fileMenu.setMnemonic('F');
         fileMenu.setText("File");
 
-        resetItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_R, java.awt.event.InputEvent.CTRL_MASK));
-        resetItem.setMnemonic('R');
-        resetItem.setText("Reset Simulation");
-        resetItem.addActionListener(new java.awt.event.ActionListener() {
+        startSimulationItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_S, java.awt.event.InputEvent.CTRL_MASK));
+        startSimulationItem.setMnemonic('S');
+        startSimulationItem.setText("Start Simulation");
+        startSimulationItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                resetItemActionPerformed(evt);
+                startSimulationItemActionPerformed(evt);
             }
         });
-        fileMenu.add(resetItem);
+        fileMenu.add(startSimulationItem);
 
         exitItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_Q, java.awt.event.InputEvent.CTRL_MASK));
         exitItem.setMnemonic('E');
@@ -173,6 +176,16 @@ public class CassandraMonitoring extends JFrame {
 
         viewMenu.setMnemonic('V');
         viewMenu.setText("View");
+
+        viewStatusItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_S, java.awt.event.InputEvent.ALT_MASK));
+        viewStatusItem.setMnemonic('S');
+        viewStatusItem.setText("Status");
+        viewStatusItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                viewStatusItemActionPerformed(evt);
+            }
+        });
+        viewMenu.add(viewStatusItem);
 
         compactionsItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_C, java.awt.event.InputEvent.ALT_MASK));
         compactionsItem.setMnemonic('C');
@@ -237,16 +250,30 @@ public class CassandraMonitoring extends JFrame {
     //=======================================================
     //=======================================================
     @SuppressWarnings("UnusedParameters")
-    private void resetItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_resetItemActionPerformed
+    private void startSimulationItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_startSimulationItemActionPerformed
         try {
             for (CassandraNode cassandraNode : cassandraNodes) {
-                cassandraNode.resetSimulation();
+                cassandraNode.startSimulation();
             }
         }
         catch (DevFailed e) {
             ErrorPane.showErrorMessage(this, e.getMessage(), e);
         }
-    }//GEN-LAST:event_resetItemActionPerformed
+    }//GEN-LAST:event_startSimulationItemActionPerformed
+
+    //=======================================================
+    //=======================================================
+    @SuppressWarnings("UnusedParameters")
+    private void viewStatusItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_viewStatusItemActionPerformed
+        // TODO add your handling code here:
+        StringBuilder   sb = new StringBuilder(PopupHtml.htmlPageTitle("Cassandra Node Status"));
+        sb.append("<table Border=2 CellSpacing=0>\n");
+        for (CassandraNode node : cassandraNodes) {
+            sb.append(node.getHtmlStatus());
+        }
+        sb.append("</table>");
+        new PopupHtml(this).show(sb.toString(), 500, 400);
+    }//GEN-LAST:event_viewStatusItemActionPerformed
 	//=======================================================
 	//=======================================================
     private void doClose() {
