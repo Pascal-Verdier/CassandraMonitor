@@ -34,10 +34,7 @@
 package org.tango.cass_moni_client;
 
 import fr.esrf.Tango.DevFailed;
-import fr.esrf.TangoApi.DevicePipe;
-import fr.esrf.TangoApi.DeviceProxy;
-import fr.esrf.TangoApi.PipeBlob;
-import fr.esrf.TangoApi.PipeDataElement;
+import fr.esrf.TangoApi.*;
 import fr.esrf.TangoApi.events.ITangoPipeListener;
 import fr.esrf.TangoApi.events.TangoEventsAdapter;
 import fr.esrf.TangoApi.events.TangoPipeEvent;
@@ -47,6 +44,8 @@ import fr.esrf.tangoatk.core.AttributeList;
 import fr.esrf.tangoatk.core.ConnectionException;
 import fr.esrf.tangoatk.core.IDevStateScalar;
 import fr.esrf.tangoatk.widget.attribute.StateViewer;
+import fr.esrf.tangoatk.widget.util.ATKGraphicsUtils;
+import fr.esrf.tangoatk.widget.util.ErrorPane;
 
 import javax.swing.*;
 import java.awt.*;
@@ -68,6 +67,7 @@ public class CassandraNode extends DeviceProxy {
     private StateViewer stateViewer;
     private AttributeList attributeList = new AttributeList();
     private JRadioButton compactionButton;
+    private JButton testButton;
     private CompactionChart compactionChart;
 
     private static final String pipeName = "Compactions";
@@ -82,10 +82,17 @@ public class CassandraNode extends DeviceProxy {
         buildStateViewer(deviceName);
         compactionChart = new CompactionChart(this);
         compactionButton = new JRadioButton("Compacting");
-        compactionButton.setFont(font);
         compactionButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(ActionEvent evt) {
                 compactionActionPerformed(evt);
+            }
+        });
+        testButton = new JButton("...");
+        testButton.setToolTipText("Test device");
+        testButton.setBorder(new javax.swing.border.SoftBevelBorder(javax.swing.border.BevelBorder.RAISED));
+        testButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(ActionEvent evt) {
+                testActionPerformed();
             }
         });
 
@@ -97,10 +104,30 @@ public class CassandraNode extends DeviceProxy {
     }
     //===============================================================
     //===============================================================
+    private void testActionPerformed() {
+        try {
+            //	Start Test Device panel  on selected device
+            JDialog d = new JDialog(new JFrame(), false);
+            d.setTitle(devname + " Device Panel");
+            d.setContentPane(new jive.ExecDev(devname));
+            ATKGraphicsUtils.centerDialog(d);
+            d.setVisible(true);
+        }
+        catch(DevFailed e) {
+            ErrorPane.showErrorMessage(new JFrame(), devname, e);
+        }
+    }
+    //===============================================================
+    //===============================================================
     private void compactionActionPerformed(ActionEvent event) {
         //  Cancel action
         JRadioButton btn = (JRadioButton) event.getSource();
         btn.setSelected(!btn.isSelected());
+    }
+    //===============================================================
+    //===============================================================
+    public JButton getTestButton() {
+        return testButton;
     }
     //===============================================================
     //===============================================================
@@ -186,8 +213,19 @@ public class CassandraNode extends DeviceProxy {
     }
     //===============================================================
     //===============================================================
-    public String getHtmlStatus() {
-        return "<tr>\n<td><b>" + name + "</b></td><td>" + getStatus() + "</td>\n</tr>\n";
+    public String getHtmlStatus() throws DevFailed {
+        DeviceAttribute[] deviceAttributes = read_attribute(
+                new String[]{"Status", "CassandraVersion", "DataLoadStr", "UnreachableNodes" });
+        String[] unreachableList = deviceAttributes[3].extractStringArray();
+        String unreachableStr = "";
+        for (String unreachable : unreachableList)
+            unreachableStr += unreachable + "<br>";
+
+        return "<tr>\n<td><b>" + name + "</b></td><td>" +
+                deviceAttributes[0].extractString()  + "</td><td>" +
+                deviceAttributes[1].extractString()  + "</td><td>" +
+                deviceAttributes[2].extractString()  + "</td><td>" +
+                unreachableStr  + "</td>\n</tr>\n";
     }
     //===============================================================
     //===============================================================

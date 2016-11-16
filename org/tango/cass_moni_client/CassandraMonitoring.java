@@ -54,7 +54,6 @@ import java.util.List;
  */
 //=======================================================
 public class CassandraMonitoring extends JFrame {
-
     private CompactionChartDialog compactionChartDialog;
     private List<CassandraNode> cassandraNodes = new ArrayList<>();
 	//=======================================================
@@ -76,7 +75,7 @@ public class CassandraMonitoring extends JFrame {
         GridBagConstraints  gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.gridy = 0;
-        gbc.insets = new Insets(10, 10, 10, 10);
+        gbc.insets = new Insets(10, 5, 10, 5);
         for (CassandraNode node : cassandraNodes) {
             gbc.gridx = 0;
             JLabel label = new JLabel(node.getName()+":  ");
@@ -85,8 +84,10 @@ public class CassandraMonitoring extends JFrame {
             nodesPanel.add(node.getStateViewer(), gbc);
             gbc.gridx++;
             nodesPanel.add(node.getCompactionButton(), gbc);
+            gbc.gridx++;
+            nodesPanel.add(node.getTestButton(), gbc);
             gbc.gridy++;
-            gbc.insets = new Insets(5, 10, 5, 10);
+            gbc.insets = new Insets(5, 5, 5, 5);
         }
     }
 	//=======================================================
@@ -267,12 +268,19 @@ public class CassandraMonitoring extends JFrame {
     private void viewStatusItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_viewStatusItemActionPerformed
         // TODO add your handling code here:
         StringBuilder   sb = new StringBuilder(PopupHtml.htmlPageTitle("Cassandra Node Status"));
-        sb.append("<table Border=2 CellSpacing=0>\n");
+        sb.append("<center><table Border=2 CellSpacing=0>\n");
+        sb.append(PopupHtml.htmlTableLine(
+                new String[] { "Node", "Status", "Version", "Load", "Unreachable" }, true));
         for (CassandraNode node : cassandraNodes) {
-            sb.append(node.getHtmlStatus());
+            try {
+                sb.append(node.getHtmlStatus());
+            }
+            catch (DevFailed e) {
+                ErrorPane.showErrorMessage(this, node.getName(), e);
+            }
         }
         sb.append("</table>");
-        new PopupHtml(this).show(sb.toString(), 500, 400);
+        new PopupHtml(this).show(sb.toString(), 640, 480);
     }//GEN-LAST:event_viewStatusItemActionPerformed
 	//=======================================================
 	//=======================================================

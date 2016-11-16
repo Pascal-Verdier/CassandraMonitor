@@ -278,6 +278,20 @@ public class PopupHtml extends JDialog implements TangoConst {
     }
     //===============================================================
     //===============================================================
+    public static String htmlTableLine(String[] items, boolean bold) {
+        StringBuilder sb = new StringBuilder("<tr>\n  ");
+        for (String item : items){
+            sb.append("<td>");
+            if (bold) sb.append("<b>");
+            sb.append(item);
+            if (bold) sb.append("</b>");
+            sb.append("</td> ");
+        }
+        sb.append("</tr>");
+        return sb.toString();
+    }
+    //===============================================================
+    //===============================================================
     public static String htmlPageTitle(String title) {
         return "<center><font size=+2><b><u>"
                 + title + "</u></b></font></center><br><br>";
