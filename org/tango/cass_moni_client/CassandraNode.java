@@ -247,6 +247,8 @@ public class CassandraNode extends DeviceProxy {
         long   total = -1;
         long   completed = -1;
         double ratio = 0.0;
+        String totalStr;
+        String ratioStr;
         //=================================================================
         private Compaction(PipeDataElement pipeDataElement) {
             tableName = pipeDataElement.getName();
@@ -261,12 +263,17 @@ public class CassandraNode extends DeviceProxy {
                 switch (str) {
                     case "total":
                         total = dataElement.extractLong64Array()[0];
+                        if (total>1.e9)
+                            totalStr = String.format("%.3f", 1.0e-9*total) +" Gbytes";
+                        else
+                            totalStr = String.format("%.3f", 1.0e-6*total) +" Mbytes";
                         break;
                     case "completed":
                         completed = dataElement.extractLong64Array()[0];
                         break;
                     case "ratio":
                         ratio = dataElement.extractDoubleArray()[0];
+                        ratioStr = String.format("%.3f", ratio*100) +" %";
                         break;
                 }
             }
@@ -274,8 +281,7 @@ public class CassandraNode extends DeviceProxy {
         //=================================================================
         public String toString() {
             return tableName + "(" + taskName + "): " +
-                    completed + "/" +
-                    total + " bytes\t"+ String.format("%6.2f", ratio*100) +"%";
+                    completed + "/" + total + " bytes\t"+ ratioStr;
         }
         //=================================================================
     }

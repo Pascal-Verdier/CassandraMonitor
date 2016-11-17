@@ -51,11 +51,12 @@ import java.util.List;
 public class JmxToCompactions {
     private List<Compaction> previousCompactionList = new ArrayList<>();
     private List<Compaction> compactionList = new ArrayList<>();
+    private String nodeName;
     private boolean changed;
-
     //===============================================================
     //===============================================================
-    JmxToCompactions() {
+    JmxToCompactions(String nodeName) {
+        this.nodeName = nodeName;
     }
     //===============================================================
     //===============================================================
@@ -197,7 +198,8 @@ public class JmxToCompactions {
         }
         //===============================================================
         public String toString() {
-            return "taskType=" + taskType + "  " +
+            return nodeName + ": " +
+                    "taskType=" + taskType + "  " +
                     "table=" + tableName + "  " +
                     "total=" + total + "  " +
                     "completed=" + completed + "  " + ratio;

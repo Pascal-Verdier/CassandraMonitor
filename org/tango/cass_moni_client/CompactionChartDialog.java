@@ -39,9 +39,14 @@ import fr.esrf.Tango.DevFailed;
 import fr.esrf.tangoatk.widget.util.ATKGraphicsUtils;
 
 import javax.swing.*;
+import javax.swing.table.AbstractTableModel;
+import javax.swing.table.TableCellRenderer;
+import javax.swing.table.TableColumn;
 import java.awt.*;
-import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.List;
+
+import static org.tango.cass_moni_client.CassandraNode.VALIDATION;
 
 
 //===============================================================
@@ -56,7 +61,8 @@ import java.util.List;
 public class CompactionChartDialog extends JDialog {
 
 	private JFrame	parent;
-	private List<CassandraNode> cassandraNodes = new ArrayList<>();
+    private static CassandraNode cassandraNode = null;
+	private static List<CassandraNode> cassandraNodes;
 	//===============================================================
 	/**
 	 *	Creates new form CompactionChartDialog
@@ -65,18 +71,19 @@ public class CompactionChartDialog extends JDialog {
 	public CompactionChartDialog(JFrame parent, List<CassandraNode> cassandraNodes) throws DevFailed {
 		super(parent, false);
 		this.parent = parent;
-		this.cassandraNodes = cassandraNodes;
+		CompactionChartDialog.cassandraNodes = cassandraNodes;
 		initComponents();
+        buildTable();
 
 		//	Create and add chart for each node
-        int LINE_SIZE=(int) Math.sqrt(cassandraNodes.size())+1;
+        int LINE_SIZE=(int) Math.sqrt(cassandraNodes.size())+2;
 		GridBagConstraints  gbc = new GridBagConstraints();
 		gbc.fill = GridBagConstraints.BOTH;
         gbc.gridx = 0;
         gbc.gridy=0;
         int i=0;
 		for (CassandraNode node : cassandraNodes) {
-			centerPanel.add(node.getCompactionChart(), gbc);
+			centerTopPanel.add(node.getCompactionChart(), gbc);
             if (i++>0 && (i%LINE_SIZE)==0) {
                 gbc.gridx = 0;
                 gbc.gridy++;
@@ -89,6 +96,58 @@ public class CompactionChartDialog extends JDialog {
  		ATKGraphicsUtils.centerDialog(this);
 	}
 	//===============================================================
+    private static DataTableModel tableModel;
+    private static final String[] columnNames = {
+        "Node", "Table", "Task", "Data size", "Ratio",
+    };
+    private static final int[] columnWidth = { 100, 200, 100, 80, 80 };
+    private static final int NODE  = 0;
+    private static final int TABLE = 1;
+    private static final int TASK  = 2;
+    private static final int SIZE  = 3;
+    private static final int RATIO = 4;
+    private static final Color validationColor = new Color(0x66ff66);
+    //===============================================================
+    private void buildTable() {
+        tableModel = new DataTableModel();
+
+        // Create the table
+        JTable table = new JTable(tableModel);
+        table.setRowSelectionAllowed(true);
+        table.setColumnSelectionAllowed(true);
+        table.setDragEnabled(false);
+        table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        table.getTableHeader().setFont(new java.awt.Font("Dialog", Font.BOLD, 12));
+        table.setDefaultRenderer(String.class, new LabelCellRenderer());
+
+        //  Set column width
+        final Enumeration columnEnum = table.getColumnModel().getColumns();
+        int i = 0;
+        TableColumn tableColumn;
+        while (columnEnum.hasMoreElements()) {
+            tableColumn = (TableColumn) columnEnum.nextElement();
+            tableColumn.setPreferredWidth(columnWidth[i++]);
+        }
+
+        //  Compute size to display
+        scrollPane.add(table);
+        scrollPane.setViewportView(table);
+        //scrollPane.setVisible(false);
+    }
+	//===============================================================
+	//===============================================================
+    public static void setSelection(CassandraNode cassandraNode) {
+        CompactionChartDialog.cassandraNode = cassandraNode;
+        tableModel.fireTableDataChanged();
+        //  Set selection in light gray
+        for (CassandraNode node : cassandraNodes) {
+            if (node.getCompactionChart()==cassandraNode.getCompactionChart())
+                node.getCompactionChart().setBackground(new Color(0xeeeeee));
+            else
+                node.getCompactionChart().setBackground(Color.white);
+        }
+    }
+	//===============================================================
     /** This method is called from within the constructor to
      * initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is
@@ -100,7 +159,9 @@ public class CompactionChartDialog extends JDialog {
 
         javax.swing.JPanel topPanel = new javax.swing.JPanel();
         javax.swing.JLabel titleLabel = new javax.swing.JLabel();
-        centerPanel = new javax.swing.JPanel();
+        javax.swing.JPanel centerPanel1 = new javax.swing.JPanel();
+        centerTopPanel = new javax.swing.JPanel();
+        scrollPane = new javax.swing.JScrollPane();
         javax.swing.JPanel bottomPanel = new javax.swing.JPanel();
         javax.swing.JButton cancelBtn = new javax.swing.JButton();
 
@@ -116,8 +177,15 @@ public class CompactionChartDialog extends JDialog {
 
         getContentPane().add(topPanel, java.awt.BorderLayout.NORTH);
 
-        centerPanel.setLayout(new java.awt.GridBagLayout());
-        getContentPane().add(centerPanel, java.awt.BorderLayout.CENTER);
+        centerPanel1.setLayout(new java.awt.BorderLayout());
+
+        centerTopPanel.setLayout(new java.awt.GridBagLayout());
+        centerPanel1.add(centerTopPanel, java.awt.BorderLayout.NORTH);
+
+        scrollPane.setPreferredSize(new java.awt.Dimension(500, 80));
+        centerPanel1.add(scrollPane, java.awt.BorderLayout.CENTER);
+
+        getContentPane().add(centerPanel1, java.awt.BorderLayout.CENTER);
 
         cancelBtn.setText("Dismiss");
         cancelBtn.addActionListener(new java.awt.event.ActionListener() {
@@ -165,7 +233,126 @@ public class CompactionChartDialog extends JDialog {
 
 	//===============================================================
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JPanel centerPanel;
+    private javax.swing.JPanel centerTopPanel;
+    private javax.swing.JScrollPane scrollPane;
     // End of variables declaration//GEN-END:variables
 	//===============================================================
+
+
+
+
+
+    //==============================================================
+    /**
+     * The Table tableModel
+     */
+    //==============================================================
+    public class DataTableModel extends AbstractTableModel {
+        //==========================================================
+        public int getColumnCount() {
+            return columnNames.length;
+        }
+        //==========================================================
+        public int getRowCount() {
+            if (cassandraNode==null)
+                return 0;
+            return cassandraNode.getCompactionList().size();
+        }
+        //==========================================================
+        public String getColumnName(int columnIndex) {
+            String title;
+            if (columnIndex >= getColumnCount())
+                title = columnNames[getColumnCount()-1];
+            else
+                title = columnNames[columnIndex];
+
+            // remove tango host if any
+            if (title.startsWith("tango://")) {
+                int index = title.indexOf('/', "tango://".length());
+                title = title.substring(index+1);
+            }
+
+            return title;
+        }
+        //==========================================================
+        public Object getValueAt(int row, int column) {
+            //  Value to display is returned by
+            // LabelCellRenderer.getTableCellRendererComponent()
+            return "";
+        }
+        //==========================================================
+        /**
+         * JTable uses this method to determine the default renderer/
+         * editor for each cell.  If we didn't implement this method,
+         * then the last column would contain text ("true"/"false"),
+         * rather than a check box.
+         *
+         * @param  column the specified co;umn number
+         * @return the cell class at first row for specified column.
+         */
+        //==========================================================
+        public Class getColumnClass(int column) {
+            if (isVisible()) {
+                return getValueAt(0, column).getClass();
+            }
+            else
+                return null;
+        }
+        //==========================================================
+        //==========================================================
+    }
+    //==============================================================
+    //==============================================================
+
+
+
+    //==============================================================
+    /**
+     * Renderer to set cell color
+     */
+    //==============================================================
+    public class LabelCellRenderer extends JLabel implements TableCellRenderer {
+
+        //==========================================================
+        public LabelCellRenderer() {
+            //setFont(new Font("Dialog", Font.BOLD, 11));
+            setOpaque(true); //MUST do this for background to show up.
+        }
+        //==========================================================
+        public Component getTableCellRendererComponent(
+                JTable table, Object value,
+                boolean isSelected, boolean hasFocus,
+                int row, int column) {
+            setBackground(getBackground(row));
+            switch (column) {
+                case NODE:
+                    setText(cassandraNode.getName());
+                    break;
+                case TABLE:
+                    setText(cassandraNode.getCompactionList().get(row).tableName);
+                    break;
+                case TASK:
+                    setText(cassandraNode.getCompactionList().get(row).taskName);
+                    break;
+                case SIZE:
+                    setText(cassandraNode.getCompactionList().get(row).totalStr);
+                    break;
+                case RATIO:
+                    setText(cassandraNode.getCompactionList().get(row).ratioStr);
+                    break;
+            }
+            return this;
+        }
+        //==========================================================
+        private Color getBackground(int row) {
+            if (cassandraNode.getCompactionList().get(row).taskType==VALIDATION)
+                return validationColor;
+            else
+                return Color.white;
+        }
+        //==========================================================
+    }
+    //==============================================================
+    //==============================================================
+
 }

@@ -91,7 +91,7 @@ public class CassandraMonitor {
     /*----- PROTECTED REGION ID(CassandraMonitor.variables) ENABLED START -----*/
 
     //	Put static variables here
-    private static final boolean simulate = true;
+    private static final boolean simulate = false;
 
     /*----- PROTECTED REGION END -----*/	//	CassandraMonitor.variables
 	/*----- PROTECTED REGION ID(CassandraMonitor.private) ENABLED START -----*/
@@ -682,7 +682,7 @@ public class CassandraMonitor {
 
     private class CompactionsThread extends Thread {
 		private CompactionsThread() {
-			jmxToCompactions = new JmxToCompactions();
+			jmxToCompactions = new JmxToCompactions(node);
 		}
         public void run() {
 			//noinspection InfiniteLoopStatement

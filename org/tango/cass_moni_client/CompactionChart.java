@@ -132,6 +132,7 @@ public class CompactionChart extends JLChart implements IJLChartListener {
         JLDataView dataView = chartEvent.getDataView();
         int index = chartEvent.getDataViewIndex();
         List<CassandraNode.Compaction> compactionList = cassandraNode.getCompactionList();
+        CompactionChartDialog.setSelection(cassandraNode);
 
         int i=0;
         for (CassandraNode.Compaction compaction : compactionList) {
@@ -141,12 +142,7 @@ public class CompactionChart extends JLChart implements IJLChartListener {
 
                 //  If found, return compaction/validation parameters
                 if (i == index) {
-                    return new String[]{
-                            compaction.taskName + " on " + compaction.tableName + ":",
-                            String.format("%6.2f", (100.0 * compaction.ratio)) + " %",
-                            String.format("%.3f", (0.000001 * compaction.completed)) + '/' +
-                                    String.format("%.3f", (0.000001 * compaction.total)) + " Mbytes",
-                    };
+                    return new String[]  { compaction.tableName };
                 }
                 i++;
             }
