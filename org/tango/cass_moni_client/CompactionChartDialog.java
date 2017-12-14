@@ -141,12 +141,24 @@ public class CompactionChartDialog extends JDialog {
         tableModel.fireTableDataChanged();
         //  Set selection in light gray
         for (CassandraNode node : cassandraNodes) {
-            if (node.getCompactionChart()==cassandraNode.getCompactionChart())
-                node.getCompactionChart().setBackground(new Color(0xeeeeee));
-            else
+            if (node.getCompactionChart()==cassandraNode.getCompactionChart()) {
+                node.getCompactionChart().setBackground(new Color(0xffffdd));
+                node.setSelected(true);
+            }
+            else {
                 node.getCompactionChart().setBackground(Color.white);
+                node.setSelected(true);
+            }
         }
     }
+	//===============================================================
+	//===============================================================
+    public static void firDataChanged() {
+        tableModel.fireTableDataChanged();
+    }
+	//===============================================================
+	//===============================================================
+
 	//===============================================================
     /** This method is called from within the constructor to
      * initialize the form.

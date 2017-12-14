@@ -124,6 +124,8 @@ public class CompactionChart extends JLChart implements IJLChartListener {
             getXAxis().setMaximum(compactionList.size() + 1);
         }
         repaint();
+        if (cassandraNode.isSelected())
+            CompactionChartDialog.firDataChanged();
     }
     //===============================================================
     //===============================================================

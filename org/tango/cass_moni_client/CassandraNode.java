@@ -69,6 +69,7 @@ public class CassandraNode extends DeviceProxy {
     private JRadioButton compactionButton;
     private JButton testButton;
     private CompactionChart compactionChart;
+    private boolean selected;
 
     private static final String pipeName = "Compactions";
     private static final Font   font = new Font("Dialog", Font.BOLD, 12);
@@ -101,6 +102,16 @@ public class CassandraNode extends DeviceProxy {
         PipeEventListener pipeListener = new PipeEventListener();
         adapter.addTangoPipeListener(pipeListener, pipeName, TangoConst.NOT_STATELESS);
 
+    }
+    //===============================================================
+    //===============================================================
+    public boolean isSelected() {
+        return selected;
+    }
+    //===============================================================
+    //===============================================================
+    public void setSelected(boolean selected) {
+        this.selected = selected;
     }
     //===============================================================
     //===============================================================

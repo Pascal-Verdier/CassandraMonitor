@@ -91,7 +91,7 @@ public class CassandraMonitor {
     /*----- PROTECTED REGION ID(CassandraMonitor.variables) ENABLED START -----*/
 
     //	Put static variables here
-    private static final boolean simulate = false;
+    private static boolean runThreads = true;
 
     /*----- PROTECTED REGION END -----*/	//	CassandraMonitor.variables
 	/*----- PROTECTED REGION ID(CassandraMonitor.private) ENABLED START -----*/
@@ -205,6 +205,26 @@ public class CassandraMonitor {
 		/*----- PROTECTED REGION END -----*/	//	CassandraMonitor.setJMXConnectionTimeout
 	}
 	
+	/**
+	 * Device Property Simulate
+	 * Will simulate compation if true
+	 */
+	@DeviceProperty(name="Simulate", description="Will simulate compation if true" ,
+	        defaultValue= { "false" })
+	private boolean simulate;
+	/**
+	 * set property Simulate
+	 * @param  simulate  see description above.
+	 */
+	public void setSimulate(boolean simulate) {
+		this.simulate = simulate;
+		/*----- PROTECTED REGION ID(CassandraMonitor.setSimulate) ENABLED START -----*/
+		
+		//	Check property value here
+		
+		/*----- PROTECTED REGION END -----*/	//	CassandraMonitor.setSimulate
+	}
+	
 
 
 	//========================================================
@@ -266,6 +286,7 @@ public class CassandraMonitor {
 		/*----- PROTECTED REGION ID(CassandraMonitor.deleteDevice) ENABLED START -----*/
 
 		jmxUtilities.close();
+		runThreads = false;
 
 		/*----- PROTECTED REGION END -----*/	//	CassandraMonitor.deleteDevice
 		xlogger.exit();
@@ -667,8 +688,10 @@ public class CassandraMonitor {
 		xlogger.entry();
 		/*----- PROTECTED REGION ID(CassandraMonitor.startSimulation) ENABLED START -----*/
 
-		if (simulate)
-	        jmxToCompactions.startSimulation();
+		if (simulate) {
+			System.out.println(node + ": Start the Simulation....");
+			jmxToCompactions.startSimulation();
+		}
 
 		/*----- PROTECTED REGION END -----*/	//	CassandraMonitor.startSimulation
 		xlogger.exit();
@@ -685,11 +708,10 @@ public class CassandraMonitor {
 			jmxToCompactions = new JmxToCompactions(node);
 		}
         public void run() {
-			//noinspection InfiniteLoopStatement
-			while (true) {
+			while (runThreads) {
                 try {
-                    if(simulate) {
-                        jmxToCompactions.setList();
+                    if (simulate) {
+                    	jmxToCompactions.setList();
                     }
                     else {
                         //  Build compaction object list
